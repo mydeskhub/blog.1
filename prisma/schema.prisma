@@ -1,0 +1,384 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlatformRole {
+  USER
+  ADMIN
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  EDITOR
+  AUTHOR
+  REVIEWER
+  VIEWER
+}
+
+enum PostStatus {
+  DRAFT
+  IN_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NotificationType {
+  COMMENT
+  CLAP
+  REVIEW_REQUEST
+  REVIEW_APPROVED
+  REVIEW_CHANGES_REQUESTED
+  MENTION
+  SUBSCRIPTION
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+}
+
+model User {
+  id               String              @id @default(cuid())
+  name             String?
+  email            String?             @unique
+  emailVerified    DateTime?
+  image            String?
+  platformRole     PlatformRole        @default(USER)
+  bio              String?
+  accounts         Account[]
+  sessions         Session[]
+  authoredPosts    Post[]              @relation("PostAuthor")
+  comments         Comment[]
+  claps            Clap[]
+  memberships      Membership[]
+  notifications    Notification[]
+  follows          Follow[]            @relation("Follower")
+  followers        Follow[]            @relation("Following")
+  subscriptions    UserSubscription[]
+  tipsSent         Tip[]               @relation("Tipper")
+  postRevisions    PostRevision[]
+  reviewRequests   ReviewRequest[]     @relation("ReviewRequester")
+  reviewsPerformed ReviewRequest[]     @relation("Reviewer")
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+model Organization {
+  id            String                 @id @default(cuid())
+  name          String
+  slug          String                 @unique
+  description   String?
+  logoUrl       String?
+  billingEmail  String?
+  memberships   Membership[]
+  blogs         Blog[]
+  invitations   Invitation[]
+  subscriptions OrganizationSubscription[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+}
+
+model Membership {
+  id             String         @id @default(cuid())
+  organizationId String
+  userId         String
+  role           MembershipRole
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model Invitation {
+  id             String         @id @default(cuid())
+  organizationId String
+  email          String
+  role           MembershipRole
+  token          String         @unique
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+
+  @@index([organizationId, email])
+}
+
+model Blog {
+  id             String         @id @default(cuid())
+  organizationId String
+  title          String
+  description    String?
+  slug           String
+  seoTitle       String?
+  seoDescription String?
+  logoUrl        String?
+  themeConfig    Json?
+  googleAnalyticsId String?
+  customAnalyticsScript String?
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  domains        CustomDomain[]
+  categories     Category[]
+  posts          Post[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([organizationId, slug])
+}
+
+model CustomDomain {
+  id          String   @id @default(cuid())
+  blogId      String
+  hostname    String   @unique
+  verifiedAt  DateTime?
+  isPrimary   Boolean  @default(false)
+  verificationToken String
+  blog        Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([blogId])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  blogId      String
+  name        String
+  slug        String
+  blog        Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  posts       Post[]
+
+  @@unique([blogId, slug])
+}
+
+model Tag {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  posts       PostTag[]
+}
+
+model Post {
+  id            String         @id @default(cuid())
+  blogId         String
+  authorId       String
+  categoryId     String?
+  title          String
+  slug           String
+  excerpt        String?
+  coverImageUrl  String?
+  content        Json
+  htmlContent    String?
+  status         PostStatus    @default(DRAFT)
+  publishedAt    DateTime?
+  scheduledFor   DateTime?
+  seoTitle       String?
+  seoDescription String?
+  readTime       Int?
+  viewCount      Int            @default(0)
+  allowComments  Boolean        @default(true)
+  author         User           @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  blog           Blog           @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  category       Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  revisions      PostRevision[]
+  tags           PostTag[]
+  comments       Comment[]
+  claps          Clap[]
+  tips           Tip[]
+  reviewRequests ReviewRequest[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([blogId, slug])
+  @@index([blogId, status])
+  @@index([authorId])
+}
+
+model PostRevision {
+  id         String   @id @default(cuid())
+  postId      String
+  editorId    String
+  title       String
+  content     Json
+  htmlContent String?
+  summary     String?
+  createdAt   DateTime @default(now())
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  editor      User     @relation(fields: [editorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+model ReviewRequest {
+  id           String      @id @default(cuid())
+  postId        String
+  requesterId   String
+  reviewerId    String?
+  status        PostStatus  @default(IN_REVIEW)
+  note          String?
+  resolvedAt    DateTime?
+  post          Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  requester     User        @relation("ReviewRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  reviewer      User?       @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  createdAt     DateTime    @default(now())
+
+  @@index([postId, status])
+}
+
+model PostTag {
+  postId String
+  tagId  String
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+}
+
+model Comment {
+  id         String    @id @default(cuid())
+  postId      String
+  authorId    String
+  body        String
+  parentId    String?
+  deletedAt   DateTime?
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies     Comment[] @relation("CommentReplies")
+  createdAt   DateTime  @default(now())
+
+  @@index([postId, createdAt])
+}
+
+model Clap {
+  postId    String
+  userId    String
+  count     Int      @default(1)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([postId, userId])
+}
+
+model Follow {
+  followerId String
+  followingId String
+  follower   User   @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following  User   @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([followerId, followingId])
+}
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId      String
+  type        NotificationType
+  title       String
+  body        String?
+  metadata    Json?
+  readAt      DateTime?
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  monthlyCents Int
+  description String?
+  features    Json
+  orgSubscriptions OrganizationSubscription[]
+  userSubscriptions UserSubscription[]
+}
+
+model OrganizationSubscription {
+  id             String             @id @default(cuid())
+  organizationId String
+  planId         String
+  stripeCustomerId String?          @unique
+  stripeSubscriptionId String?      @unique
+  status         SubscriptionStatus @default(TRIALING)
+  currentPeriodEnd DateTime?
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan           Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  createdAt      DateTime           @default(now())
+
+  @@unique([organizationId, status])
+}
+
+model UserSubscription {
+  id             String             @id @default(cuid())
+  userId          String
+  planId          String
+  stripeCustomerId String?          @unique
+  stripeSubscriptionId String?      @unique
+  status         SubscriptionStatus @default(TRIALING)
+  currentPeriodEnd DateTime?
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan           Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  createdAt      DateTime           @default(now())
+
+  @@index([userId, status])
+}
+
+model Tip {
+  id            String   @id @default(cuid())
+  postId         String
+  tipperId       String
+  amountCents    Int
+  currency       String   @default("usd")
+  stripePaymentIntentId String? @unique
+  createdAt      DateTime @default(now())
+  tipper         User     @relation("Tipper", fields: [tipperId], references: [id], onDelete: Cascade)
+  post           Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sessionToken])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+}
