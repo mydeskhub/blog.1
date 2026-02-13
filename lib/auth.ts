@@ -17,8 +17,7 @@ export const authConfig: NextAuthConfig = {
     }),
     Twitter({
       clientId: process.env.AUTH_TWITTER_ID ?? "",
-      clientSecret: process.env.AUTH_TWITTER_SECRET ?? "",
-      version: "2.0"
+      clientSecret: process.env.AUTH_TWITTER_SECRET ?? ""
     })
   ],
   callbacks: {
