@@ -5,6 +5,17 @@ export async function GET() {
   const nextAuthSecret = (process.env.NEXTAUTH_SECRET ?? "").trim();
   const databaseUrl = (process.env.DATABASE_URL ?? "").trim();
   const nextAuthUrl = (process.env.NEXTAUTH_URL ?? "").trim();
+  let nextAuthUrlHost: string | null = null;
+  let nextAuthUrlError: string | null = null;
+
+  if (nextAuthUrl) {
+    try {
+      const parsed = new URL(nextAuthUrl);
+      nextAuthUrlHost = parsed.host;
+    } catch (error) {
+      nextAuthUrlError = error instanceof Error ? error.message : "Invalid NEXTAUTH_URL";
+    }
+  }
 
   return NextResponse.json({
     ok: true,
@@ -17,6 +28,10 @@ export async function GET() {
       hasGoogleSecret: Boolean(process.env.AUTH_GOOGLE_SECRET),
       hasTwitterId: Boolean(process.env.AUTH_TWITTER_ID),
       hasTwitterSecret: Boolean(process.env.AUTH_TWITTER_SECRET)
+    },
+    nextAuthUrl: {
+      host: nextAuthUrlHost,
+      error: nextAuthUrlError
     },
     runtime: {
       nodeEnv: process.env.NODE_ENV ?? null,
