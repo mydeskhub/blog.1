@@ -11,6 +11,8 @@ if (!process.env.AUTH_SECRET && resolvedSecret) {
 
 export const authConfig: NextAuthConfig = {
   secret: resolvedSecret || undefined,
+  trustHost: true,
+  debug: process.env.NODE_ENV !== "production",
   adapter: PrismaAdapter(db),
   session: { strategy: "database" },
   pages: {
@@ -23,9 +25,50 @@ export const authConfig: NextAuthConfig = {
     }),
     Twitter({
       clientId: process.env.AUTH_TWITTER_ID ?? "",
-      clientSecret: process.env.AUTH_TWITTER_SECRET ?? ""
+      clientSecret: process.env.AUTH_TWITTER_SECRET ?? "",
+      authorization: {
+        params: {
+          scope: "users.read tweet.read offline.access"
+        }
+      },
+      profile(rawProfile) {
+        const profile = (rawProfile as { data?: Record<string, unknown> }).data ?? (rawProfile as Record<string, unknown>);
+        const id = profile?.id;
+
+        if (!id) {
+          // Safe diagnostic log: useful for callback parsing issues without leaking secrets/tokens.
+          console.error("[auth][twitter] profile parse failed", {
+            profileKeys: Object.keys(profile ?? {}),
+            rawKeys: Object.keys((rawProfile as Record<string, unknown>) ?? {})
+          });
+          throw new Error("Twitter profile payload missing id");
+        }
+
+        return {
+          id: String(id),
+          name: String(profile.name ?? profile.username ?? "Twitter User"),
+          email: null,
+          image: (profile.profile_image_url as string | undefined) ?? null
+        };
+      }
     })
   ],
+  logger: {
+    error(code, metadata) {
+      console.error("[auth][logger][error]", code, metadata);
+    },
+    warn(code) {
+      console.warn("[auth][logger][warn]", code);
+    }
+  },
+  events: {
+    async signIn(message) {
+      console.info("[auth][event][signIn]", {
+        userId: message.user.id,
+        provider: message.account?.provider
+      });
+    }
+  },
   callbacks: {
     async session({ session, user }) {
       if (session.user) {
