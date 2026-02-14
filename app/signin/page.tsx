@@ -1,5 +1,16 @@
 import { signIn } from "@/lib/auth";
 
+const baseUrl = (process.env.NEXTAUTH_URL ?? "").trim();
+
+function getRedirectUrl(path: string) {
+  if (!baseUrl) return path;
+  try {
+    return new URL(path, baseUrl).toString();
+  } catch {
+    return path;
+  }
+}
+
 export default function SignInPage() {
   return (
     <main className="container" style={{ paddingTop: "1.5rem" }}>
@@ -8,7 +19,7 @@ export default function SignInPage() {
         <form
           action={async () => {
             "use server";
-            await signIn("google", { redirectTo: "/dashboard" });
+            await signIn("google", { redirectTo: getRedirectUrl("/dashboard") });
           }}
         >
           <button className="button primary" type="submit">
@@ -19,7 +30,7 @@ export default function SignInPage() {
           style={{ marginTop: "0.8rem" }}
           action={async () => {
             "use server";
-            await signIn("twitter", { redirectTo: "/dashboard" });
+            await signIn("twitter", { redirectTo: getRedirectUrl("/dashboard") });
           }}
         >
           <button className="button" type="submit">
