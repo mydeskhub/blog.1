@@ -1,21 +1,25 @@
 import { NextResponse } from "next/server";
+import { headers as nextHeaders } from "next/headers";
+
+function tryParseUrl(raw: string): { host: string | null; error: string | null } {
+  try {
+    return { host: new URL(raw).host, error: null };
+  } catch (e) {
+    return { host: null, error: e instanceof Error ? e.message : "Invalid URL" };
+  }
+}
 
 export async function GET() {
   const authSecret = (process.env.AUTH_SECRET ?? "").trim();
   const nextAuthSecret = (process.env.NEXTAUTH_SECRET ?? "").trim();
   const databaseUrl = (process.env.DATABASE_URL ?? "").trim();
+  const authUrl = (process.env.AUTH_URL ?? "").trim();
   const nextAuthUrl = (process.env.NEXTAUTH_URL ?? "").trim();
-  let nextAuthUrlHost: string | null = null;
-  let nextAuthUrlError: string | null = null;
 
-  if (nextAuthUrl) {
-    try {
-      const parsed = new URL(nextAuthUrl);
-      nextAuthUrlHost = parsed.host;
-    } catch (error) {
-      nextAuthUrlError = error instanceof Error ? error.message : "Invalid NEXTAUTH_URL";
-    }
-  }
+  // This is what NextAuth v5 createActionURL actually resolves
+  const envUrl = authUrl || nextAuthUrl;
+
+  const hdrs = await nextHeaders();
 
   return NextResponse.json({
     ok: true,
@@ -23,15 +27,21 @@ export async function GET() {
       hasDatabaseUrl: Boolean(databaseUrl),
       hasAuthSecret: Boolean(authSecret),
       hasNextAuthSecret: Boolean(nextAuthSecret),
+      hasAuthUrl: Boolean(authUrl),
       hasNextAuthUrl: Boolean(nextAuthUrl),
       hasGoogleId: Boolean(process.env.AUTH_GOOGLE_ID),
       hasGoogleSecret: Boolean(process.env.AUTH_GOOGLE_SECRET),
       hasTwitterId: Boolean(process.env.AUTH_TWITTER_ID),
       hasTwitterSecret: Boolean(process.env.AUTH_TWITTER_SECRET)
     },
-    nextAuthUrl: {
-      host: nextAuthUrlHost,
-      error: nextAuthUrlError
+    urlDiag: {
+      authUrl: authUrl ? tryParseUrl(authUrl) : "not set",
+      nextAuthUrl: nextAuthUrl ? tryParseUrl(nextAuthUrl) : "not set",
+      resolvedEnvUrl: envUrl || "none — will use headers",
+      resolvedEnvUrlParse: envUrl ? tryParseUrl(envUrl) : "n/a",
+      xForwardedHost: hdrs.get("x-forwarded-host") ?? null,
+      xForwardedProto: hdrs.get("x-forwarded-proto") ?? null,
+      host: hdrs.get("host") ?? null,
     },
     runtime: {
       nodeEnv: process.env.NODE_ENV ?? null,
