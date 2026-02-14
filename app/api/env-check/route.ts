@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
+  const authSecret = (process.env.AUTH_SECRET ?? "").trim();
+  const nextAuthSecret = (process.env.NEXTAUTH_SECRET ?? "").trim();
+  const databaseUrl = (process.env.DATABASE_URL ?? "").trim();
+  const nextAuthUrl = (process.env.NEXTAUTH_URL ?? "").trim();
+
   return NextResponse.json({
     ok: true,
     checks: {
-      hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
-      hasAuthSecret: Boolean(process.env.AUTH_SECRET),
-      hasNextAuthSecret: Boolean(process.env.NEXTAUTH_SECRET),
-      hasNextAuthUrl: Boolean(process.env.NEXTAUTH_URL),
+      hasDatabaseUrl: Boolean(databaseUrl),
+      hasAuthSecret: Boolean(authSecret),
+      hasNextAuthSecret: Boolean(nextAuthSecret),
+      hasNextAuthUrl: Boolean(nextAuthUrl),
       hasGoogleId: Boolean(process.env.AUTH_GOOGLE_ID),
       hasGoogleSecret: Boolean(process.env.AUTH_GOOGLE_SECRET),
       hasTwitterId: Boolean(process.env.AUTH_TWITTER_ID),
