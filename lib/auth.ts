@@ -5,6 +5,7 @@ import NextAuth, { type NextAuthConfig } from "next-auth";
 import { db } from "@/lib/db";
 
 export const authConfig: NextAuthConfig = {
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   adapter: PrismaAdapter(db),
   session: { strategy: "database" },
   pages: {
