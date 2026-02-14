@@ -21,7 +21,10 @@ export async function GET() {
     runtime: {
       nodeEnv: process.env.NODE_ENV ?? null,
       vercelEnv: process.env.VERCEL_ENV ?? null,
-      vercelRegion: process.env.VERCEL_REGION ?? null
+      vercelRegion: process.env.VERCEL_REGION ?? null,
+      vercelUrl: process.env.VERCEL_URL ?? null,
+      vercelDeploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? null,
+      vercelGitCommitSha: process.env.VERCEL_GIT_COMMIT_SHA ?? null
     }
   });
 }
