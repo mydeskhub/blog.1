@@ -3,20 +3,36 @@ import { db } from "@/lib/db";
 export const revalidate = 120;
 
 export default async function HomePage() {
-  const posts = await db.post.findMany({
-    where: { status: "PUBLISHED" },
-    orderBy: { publishedAt: "desc" },
-    take: 10,
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      excerpt: true,
-      publishedAt: true,
-      author: { select: { name: true } },
-      blog: { select: { slug: true, title: true } }
+  let posts: Array<{
+    id: string;
+    slug: string;
+    title: string;
+    excerpt: string | null;
+    publishedAt: Date | null;
+    author: { name: string | null };
+    blog: { slug: string; title: string };
+  }> = [];
+
+  if (process.env.DATABASE_URL) {
+    try {
+      posts = await db.post.findMany({
+        where: { status: "PUBLISHED" },
+        orderBy: { publishedAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          excerpt: true,
+          publishedAt: true,
+          author: { select: { name: true } },
+          blog: { select: { slug: true, title: true } }
+        }
+      });
+    } catch {
+      posts = [];
     }
-  });
+  }
 
   return (
     <main className="container" style={{ paddingTop: "1rem", paddingBottom: "2rem" }}>
