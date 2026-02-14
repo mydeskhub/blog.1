@@ -26,11 +26,6 @@ export const authConfig: NextAuthConfig = {
     Twitter({
       clientId: process.env.AUTH_TWITTER_ID ?? "",
       clientSecret: process.env.AUTH_TWITTER_SECRET ?? "",
-      authorization: {
-        params: {
-          scope: "users.read tweet.read offline.access"
-        }
-      },
       profile(rawProfile) {
         const profile = (rawProfile as { data?: Record<string, unknown> }).data ?? (rawProfile as Record<string, unknown>);
         const id = profile?.id;
