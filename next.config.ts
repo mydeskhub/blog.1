@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   assetPrefix: process.env.NEXT_PUBLIC_CDN_URL || undefined,
+  typedRoutes: true,
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
@@ -20,9 +21,6 @@ const nextConfig: NextConfig = {
       }
     ];
   },
-  experimental: {
-    typedRoutes: true
-  }
 };
 
 export default nextConfig;
