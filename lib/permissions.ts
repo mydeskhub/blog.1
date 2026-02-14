@@ -1,4 +1,4 @@
-import { MembershipRole, PlatformRole, PostStatus } from "@prisma/client";
+import type { MembershipRole, PlatformRole, PostStatus } from "@prisma/client";
 
 export function isPlatformAdmin(role: PlatformRole | undefined): boolean {
   return role === "ADMIN";
@@ -12,10 +12,12 @@ export function canReviewPost(role: MembershipRole): boolean {
   return role === "OWNER" || role === "ADMIN" || role === "EDITOR" || role === "REVIEWER";
 }
 
-export function canPublishStatusTransition(role: MembershipRole, nextStatus: PostStatus): boolean {
+export function canPublishStatusTransition(
+  role: MembershipRole,
+  nextStatus: PostStatus,
+): boolean {
   if (nextStatus === "PUBLISHED" || nextStatus === "APPROVED") {
     return role === "OWNER" || role === "ADMIN" || role === "EDITOR";
   }
-
   return canEditPost(role);
 }

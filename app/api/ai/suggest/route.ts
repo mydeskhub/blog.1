@@ -10,7 +10,10 @@ export async function POST(request: Request) {
     const user = await requireUser();
     const allowed = await checkRateLimit(`ai:${user.id}`, 30, 60);
     if (!allowed) {
-      return NextResponse.json({ error: "Rate limit exceeded. Try again in a minute." }, { status: 429 });
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Try again in a minute." },
+        { status: 429 },
+      );
     }
 
     const body = aiSuggestionSchema.parse(await request.json());
@@ -18,11 +21,14 @@ export async function POST(request: Request) {
 
     await captureEvent(user.id, "ai_suggestion_generated", {
       mode: body.mode,
-      selectionLength: body.selection.length
+      selectionLength: body.selection.length,
     });
 
     return NextResponse.json({ suggestion });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 400 },
+    );
   }
 }

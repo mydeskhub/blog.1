@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { toSlug } from "@/lib/utils";
-
-const createTeamSchema = z.object({
-  name: z.string().min(2).max(80),
-  description: z.string().max(500).optional()
-});
+import { createTeamSchema } from "@/lib/validation";
 
 export async function POST(request: Request) {
   const user = await requireUser();
@@ -24,11 +19,11 @@ export async function POST(request: Request) {
         create: {
           title: body.name,
           slug: "main",
-          description: body.description
-        }
-      }
+          description: body.description,
+        },
+      },
     },
-    include: { memberships: true, blogs: true }
+    include: { memberships: true, blogs: true },
   });
 
   return NextResponse.json(team, { status: 201 });
@@ -37,10 +32,14 @@ export async function POST(request: Request) {
 export async function GET() {
   const user = await requireUser();
 
-  const organizations = await db.membership.findMany({
+  const memberships = await db.membership.findMany({
     where: { userId: user.id },
-    include: { organization: { include: { memberships: true, blogs: true } } }
+    include: {
+      organization: {
+        include: { blogs: true },
+      },
+    },
   });
 
-  return NextResponse.json(organizations.map((m) => m.organization));
+  return NextResponse.json(memberships.map((m) => m.organization));
 }

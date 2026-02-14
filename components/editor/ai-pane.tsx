@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Sparkles } from "lucide-react";
 
 type AIPaneProps = {
   onApply: (suggestion: string) => void;
@@ -25,7 +29,7 @@ export function AIPane({ onApply, getSelection }: AIPaneProps) {
       const response = await fetch("/api/ai/suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, tone, selection })
+        body: JSON.stringify({ mode, tone, selection }),
       });
 
       if (!response.ok) {
@@ -42,61 +46,60 @@ export function AIPane({ onApply, getSelection }: AIPaneProps) {
   }
 
   return (
-    <aside className="card ai-panel">
-      <h3 style={{ marginTop: 0 }}>AI Assistant</h3>
-      <p style={{ marginTop: 0, color: "var(--muted)", fontSize: "0.92rem" }}>
+    <aside className="sticky top-20 self-start rounded-2xl border border-line bg-surface p-5">
+      <div className="flex items-center gap-2 mb-2">
+        <Sparkles className="h-4 w-4 text-accent" />
+        <h3 className="font-bold text-text">AI Assistant</h3>
+      </div>
+      <p className="text-xs text-muted mb-4">
         Suggestions are optional. You keep full authorship control.
       </p>
 
-      <label>
-        Mode
-        <select className="select" value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
-          <option value="rephrase">Rephrase</option>
-          <option value="tone">Tone edit</option>
-          <option value="grammar">Grammar fix</option>
-          <option value="outline">Generate outline</option>
-          <option value="expand">Expand section</option>
-        </select>
-      </label>
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs font-medium text-text mb-1 block">Mode</label>
+          <Select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
+            <option value="rephrase">Rephrase</option>
+            <option value="tone">Tone edit</option>
+            <option value="grammar">Grammar fix</option>
+            <option value="outline">Generate outline</option>
+            <option value="expand">Expand section</option>
+          </Select>
+        </div>
 
-      {mode === "tone" && (
-        <label style={{ display: "block", marginTop: "0.6rem" }}>
-          Tone
-          <input className="input" value={tone} onChange={(e) => setTone(e.target.value)} />
-        </label>
-      )}
+        {mode === "tone" && (
+          <div>
+            <label className="text-xs font-medium text-text mb-1 block">Tone</label>
+            <Input value={tone} onChange={(e) => setTone(e.target.value)} />
+          </div>
+        )}
 
-      <button className="button primary" style={{ marginTop: "0.8rem" }} disabled={loading} onClick={runSuggestion}>
-        {loading ? "Generating..." : "Suggest"}
-      </button>
+        <Button
+          variant="primary"
+          className="w-full"
+          disabled={loading}
+          onClick={runSuggestion}
+        >
+          {loading ? "Generating..." : "Suggest"}
+        </Button>
+      </div>
 
-      {error && <p style={{ color: "#b91c1c" }}>{error}</p>}
+      {error && <p className="mt-3 text-sm text-danger">{error}</p>}
 
       {suggestion && (
-        <>
-          <div
-            style={{
-              marginTop: "0.8rem",
-              border: "1px solid var(--line)",
-              borderRadius: 10,
-              padding: "0.7rem",
-              whiteSpace: "pre-wrap",
-              maxHeight: 240,
-              overflow: "auto",
-              fontSize: "0.94rem"
-            }}
-          >
+        <div className="mt-4">
+          <div className="rounded-lg border border-line p-3 text-sm whitespace-pre-wrap max-h-60 overflow-auto">
             {suggestion}
           </div>
-          <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.6rem" }}>
-            <button className="button primary" onClick={() => onApply(suggestion)}>
+          <div className="mt-3 flex gap-2">
+            <Button variant="primary" size="sm" onClick={() => onApply(suggestion)}>
               Accept
-            </button>
-            <button className="button" onClick={() => setSuggestion("")}>
+            </Button>
+            <Button size="sm" onClick={() => setSuggestion("")}>
               Reject
-            </button>
+            </Button>
           </div>
-        </>
+        </div>
       )}
     </aside>
   );

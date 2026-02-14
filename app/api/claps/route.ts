@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
-
-const clapSchema = z.object({ postId: z.string().cuid(), count: z.number().int().min(1).max(50).default(1) });
+import { clapSchema } from "@/lib/validation";
 
 export async function POST(request: Request) {
   const user = await requireUser();
@@ -12,8 +10,14 @@ export async function POST(request: Request) {
   const clap = await db.clap.upsert({
     where: { postId_userId: { postId: body.postId, userId: user.id } },
     update: { count: { increment: body.count } },
-    create: { postId: body.postId, userId: user.id, count: body.count }
+    create: { postId: body.postId, userId: user.id, count: body.count },
   });
 
-  return NextResponse.json(clap);
+  // Get total clap count for this post
+  const total = await db.clap.aggregate({
+    where: { postId: body.postId },
+    _sum: { count: true },
+  });
+
+  return NextResponse.json({ ...clap, totalClaps: total._sum.count ?? 0 });
 }

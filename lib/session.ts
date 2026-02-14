@@ -7,3 +7,8 @@ export async function requireUser() {
   }
   return session.user;
 }
+
+export async function getAuthenticatedUser() {
+  const session = await auth();
+  return session?.user ?? null;
+}
