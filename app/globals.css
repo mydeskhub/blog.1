@@ -360,6 +360,14 @@ body {
   margin: 0.3rem 0;
 }
 
+/* Bubble menu toolbar reset — remove tippy default styles */
+.bubble-toolbar {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
 /* Inline title placeholder */
 [data-placeholder]::before {
   content: attr(data-placeholder);

@@ -264,19 +264,21 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
           {post?.title ?? ""}
         </div>
 
-        {/* Editor */}
-        <EditorContent editor={editor} />
+        {/* Editor with floating menu positioned relative to this container */}
+        <div className="relative">
+          <EditorContent editor={editor} />
 
-        {/* Bubble & floating menus */}
-        {editor && (
-          <>
-            <EditorBubbleMenu editor={editor} />
+          {/* Floating "+" menu on empty paragraphs */}
+          {editor && (
             <EditorFloatingMenu
               editor={editor}
               onImageUpload={uploadImage}
             />
-          </>
-        )}
+          )}
+        </div>
+
+        {/* Bubble menu (portaled via tippy, doesn't need relative parent) */}
+        {editor && <EditorBubbleMenu editor={editor} />}
       </div>
 
       {/* Publish modal */}
