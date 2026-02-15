@@ -13,6 +13,7 @@ import { db } from "@/lib/db";
  * mismatches between the sign-in POST and OAuth callback GET.
  */
 export const { auth, handlers, signIn, signOut } = NextAuth({
+  debug: process.env.NODE_ENV !== "production",
   trustHost: true,
   adapter: PrismaAdapter(db),
   session: { strategy: "jwt" },
@@ -27,6 +28,20 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     Twitter({
       clientId: process.env.AUTH_TWITTER_ID ?? "",
       clientSecret: process.env.AUTH_TWITTER_SECRET ?? "",
+      profile(profile) {
+        // Twitter API v2 wraps the user data in a `data` field.
+        // Handle both `{ data: { id, ... } }` and flat `{ id, ... }` shapes.
+        const raw = profile as unknown as Record<string, unknown>;
+        const data = (raw.data as Record<string, string> | undefined) ?? raw;
+        return {
+          id: String(data.id),
+          name: String(data.name ?? ""),
+          email: data.email ? String(data.email) : null,
+          image: typeof data.profile_image_url === "string"
+            ? data.profile_image_url.replace("_normal", "")
+            : null,
+        };
+      },
     }),
   ],
   callbacks: {
