@@ -5,15 +5,17 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TiptapLink from "@tiptap/extension-link";
-import TiptapImage from "@tiptap/extension-image";
 import CharacterCount from "@tiptap/extension-character-count";
 import Underline from "@tiptap/extension-underline";
+import { CustomImage } from "@/components/editor/custom-image";
 import { EditorHeader } from "@/components/editor/editor-header";
 import { EditorBubbleMenu } from "@/components/editor/bubble-menu";
 import { EditorFloatingMenu } from "@/components/editor/floating-menu";
+import { ImageToolbar } from "@/components/editor/image-toolbar";
 import { PublishModal } from "@/components/editor/publish-modal";
 import { AIPane } from "@/components/editor/ai-pane";
 import { useRouter } from "next/navigation";
+import { ImageIcon, X } from "lucide-react";
 import type { JSONContent } from "@tiptap/react";
 
 type BlogOption = { id: string; name: string };
@@ -37,25 +39,44 @@ type TiptapEditorProps = {
   post?: PostData;
 };
 
+async function uploadFile(file: File): Promise<string | null> {
+  if (!file.type.startsWith("image/")) return null;
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch("/api/upload", { method: "POST", body: formData });
+  if (!res.ok) return null;
+  const data = (await res.json()) as { url: string };
+  return data.url;
+}
+
 export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
   const router = useRouter();
   const isEdit = !!post;
   const [title, setTitle] = useState(post?.title ?? "");
   const [postId, setPostId] = useState(post?.id ?? "");
   const [blogId] = useState(post?.blogId ?? blogs[0]?.id ?? "");
+  const [coverImageUrl, setCoverImageUrl] = useState(post?.coverImageUrl ?? "");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [publishOpen, setPublishOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef(false);
   const titleRef = useRef<HTMLDivElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  // Ref to always have the latest editor reference for callbacks
+  const editorRef = useRef<ReturnType<typeof useEditor>>(null);
 
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit,
       TiptapLink.configure({ openOnClick: false }),
-      TiptapImage,
+      CustomImage.configure({
+        HTMLAttributes: {
+          class: "editor-image",
+        },
+      }),
       Placeholder.configure({ placeholder: "Tell your story..." }),
       CharacterCount,
       Underline,
@@ -69,8 +90,38 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
         const file = event.dataTransfer?.files[0];
         if (file?.type.startsWith("image/")) {
           event.preventDefault();
-          uploadImage(file);
+          // Use the ref to get the current editor instance
+          const currentEditor = editorRef.current;
+          if (currentEditor) {
+            void uploadFile(file).then((url) => {
+              if (url) {
+                currentEditor.chain().focus().setImage({ src: url }).run();
+              }
+            });
+          }
           return true;
+        }
+        return false;
+      },
+      handlePaste(view, event) {
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+        for (const item of items) {
+          if (item.type.startsWith("image/")) {
+            event.preventDefault();
+            const file = item.getAsFile();
+            if (file) {
+              const currentEditor = editorRef.current;
+              if (currentEditor) {
+                void uploadFile(file).then((url) => {
+                  if (url) {
+                    currentEditor.chain().focus().setImage({ src: url }).run();
+                  }
+                });
+              }
+            }
+            return true;
+          }
         }
         return false;
       },
@@ -79,6 +130,9 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
       scheduleSave();
     },
   });
+
+  // Keep the ref in sync
+  editorRef.current = editor;
 
   const wordCount = useMemo(() => {
     if (!editor) return 0;
@@ -98,19 +152,30 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
       const htmlContent = editor.getHTML();
 
       if (postId) {
-        // Update existing
         const res = await fetch(`/api/posts/${postId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, content, htmlContent, summary: "Auto-save" }),
+          body: JSON.stringify({
+            title,
+            content,
+            htmlContent,
+            coverImageUrl: coverImageUrl || null,
+            summary: "Auto-save",
+          }),
         });
         if (!res.ok) throw new Error("Save failed");
       } else {
-        // Create new draft
         const res = await fetch("/api/posts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, blogId, status: "DRAFT", content, htmlContent }),
+          body: JSON.stringify({
+            title,
+            blogId,
+            status: "DRAFT",
+            content,
+            htmlContent,
+            coverImageUrl: coverImageUrl || undefined,
+          }),
         });
         if (!res.ok) throw new Error("Save failed");
         const data = (await res.json()) as { id: string };
@@ -123,7 +188,7 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
     } finally {
       isSavingRef.current = false;
     }
-  }, [editor, title, postId, blogId, router]);
+  }, [editor, title, postId, blogId, coverImageUrl, router]);
 
   const scheduleSave = useCallback(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -132,7 +197,7 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
     }, 2000);
   }, [doSave]);
 
-  // Schedule save when title changes
+  // Schedule save when title or cover changes
   useEffect(() => {
     if (title.trim()) {
       scheduleSave();
@@ -140,17 +205,25 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [title, scheduleSave]);
+  }, [title, coverImageUrl, scheduleSave]);
 
-  async function uploadImage(file: File) {
+  async function uploadImageToEditor(file: File) {
     if (!editor || !file.type.startsWith("image/")) return;
+    const url = await uploadFile(file);
+    if (url) {
+      editor.chain().focus().setImage({ src: url }).run();
+    }
+  }
 
-    const formData = new FormData();
-    formData.append("file", file);
-    const result = await fetch("/api/upload", { method: "POST", body: formData });
-    if (!result.ok) return;
-    const data = (await result.json()) as { url: string };
-    editor.chain().focus().setImage({ src: data.url }).run();
+  async function handleCoverUpload(file: File) {
+    if (!file.type.startsWith("image/")) return;
+    setCoverUploading(true);
+    try {
+      const url = await uploadFile(file);
+      if (url) setCoverImageUrl(url);
+    } finally {
+      setCoverUploading(false);
+    }
   }
 
   function applySuggestion(suggestion: string) {
@@ -173,7 +246,6 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
   }) {
     if (!editor) return;
 
-    // Ensure we have a saved post first
     let currentPostId = postId;
     if (!currentPostId) {
       const content = editor.getJSON();
@@ -195,7 +267,6 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
       setPostId(currentPostId);
     }
 
-    // Now update with all publish metadata
     const content = editor.getJSON();
     const htmlContent = editor.getHTML();
     const res = await fetch(`/api/posts/${currentPostId}`, {
@@ -206,7 +277,7 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
         content,
         htmlContent,
         status: data.status,
-        coverImageUrl: data.coverImageUrl ?? null,
+        coverImageUrl: data.coverImageUrl ?? coverImageUrl ?? null,
         excerpt: data.excerpt,
         tags: data.tags,
         seoTitle: data.seoTitle ?? null,
@@ -248,7 +319,59 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
         publishDisabled={!title.trim()}
       />
 
-      <div className="max-w-[700px] mx-auto px-6 pt-12 pb-40">
+      <div className="max-w-[700px] mx-auto px-6 pt-10 pb-40">
+        {/* Cover image area */}
+        <div className="mb-6">
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleCoverUpload(file);
+              e.target.value = "";
+            }}
+          />
+
+          {coverImageUrl ? (
+            <div className="group relative -mx-6">
+              <img
+                src={coverImageUrl}
+                alt="Cover"
+                className="w-full max-h-[420px] object-cover"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
+                <button
+                  type="button"
+                  onClick={() => coverInputRef.current?.click()}
+                  className="rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-text shadow hover:bg-white transition-colors"
+                >
+                  Change image
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCoverImageUrl("")}
+                  className="rounded-full bg-white/90 p-2 text-text shadow hover:bg-white transition-colors"
+                  title="Remove cover"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              disabled={coverUploading}
+              className="flex items-center gap-2 text-sm text-muted/60 hover:text-muted transition-colors py-2"
+            >
+              <ImageIcon className="h-5 w-5" />
+              {coverUploading ? "Uploading..." : "Add a cover image"}
+            </button>
+          )}
+        </div>
+
         {/* Inline title */}
         <div
           ref={titleRef}
@@ -258,26 +381,28 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
           onKeyDown={handleTitleKeyDown}
           onPaste={handleTitlePaste}
           onInput={handleTitleInput}
-          className="relative text-[42px] font-bold font-serif leading-[1.15] outline-none mb-6 text-text"
+          className="relative text-[42px] font-bold font-serif leading-[1.15] outline-none mb-2 text-text"
           style={{ minHeight: "1.2em" }}
         >
           {post?.title ?? ""}
         </div>
 
-        {/* Editor with floating menu positioned relative to this container */}
+        {/* Editor with floating menu + image toolbar */}
         <div className="relative">
           <EditorContent editor={editor} />
 
-          {/* Floating "+" menu on empty paragraphs */}
           {editor && (
-            <EditorFloatingMenu
-              editor={editor}
-              onImageUpload={uploadImage}
-            />
+            <>
+              <EditorFloatingMenu
+                editor={editor}
+                onImageUpload={uploadImageToEditor}
+              />
+              <ImageToolbar editor={editor} />
+            </>
           )}
         </div>
 
-        {/* Bubble menu (portaled via tippy, doesn't need relative parent) */}
+        {/* Bubble menu */}
         {editor && <EditorBubbleMenu editor={editor} />}
       </div>
 
@@ -288,7 +413,7 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
         blogs={blogs}
         initialData={{
           blogId: post?.blogId ?? blogId,
-          coverImageUrl: post?.coverImageUrl,
+          coverImageUrl: coverImageUrl || post?.coverImageUrl,
           excerpt: post?.excerpt,
           tags: post?.tags ?? [],
           seoTitle: post?.seoTitle,
