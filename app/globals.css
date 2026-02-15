@@ -197,6 +197,17 @@ body {
   border-radius: 0.25rem;
 }
 
+/* Uploading image overlay */
+.tiptap-medium img[data-uploading="true"] {
+  opacity: 0.5;
+  animation: image-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes image-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.3; }
+}
+
 /* Image alignment in editor */
 .tiptap-medium img[data-align="center"] {
   display: block;

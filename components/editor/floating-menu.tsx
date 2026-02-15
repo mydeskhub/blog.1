@@ -1,7 +1,7 @@
 "use client";
 
 import type { Editor } from "@tiptap/react";
-import { Plus, ImageIcon, Minus, Code, Video } from "lucide-react";
+import { Plus, ImageIcon, Minus, Code } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 type FloatingMenuProps = {
@@ -15,13 +15,11 @@ export function EditorFloatingMenu({ editor, onImageUpload }: FloatingMenuProps)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Track whether cursor is on an empty paragraph
   useEffect(() => {
     function update() {
       const { $from } = editor.state.selection;
       const node = $from.parent;
       const isEmpty = node.type.name === "paragraph" && node.content.size === 0;
-      // Also check we're at the start of the node (not inside some other block)
       const isAtStart = $from.parentOffset === 0;
       setVisible(isEmpty && isAtStart && editor.isFocused);
       if (!isEmpty) setExpanded(false);
@@ -29,23 +27,24 @@ export function EditorFloatingMenu({ editor, onImageUpload }: FloatingMenuProps)
 
     editor.on("selectionUpdate", update);
     editor.on("focus", update);
-    editor.on("blur", () => {
-      // Delay to allow clicking menu buttons
+
+    const blurHandler = () => {
       setTimeout(() => {
         if (!menuRef.current?.contains(document.activeElement)) {
           setVisible(false);
           setExpanded(false);
         }
-      }, 150);
-    });
+      }, 200);
+    };
+    editor.on("blur", blurHandler);
 
     return () => {
       editor.off("selectionUpdate", update);
       editor.off("focus", update);
+      editor.off("blur", blurHandler);
     };
   }, [editor]);
 
-  // Close expanded menu on click outside
   useEffect(() => {
     if (!expanded) return;
     function handleClick(e: MouseEvent) {
@@ -57,17 +56,13 @@ export function EditorFloatingMenu({ editor, onImageUpload }: FloatingMenuProps)
     return () => document.removeEventListener("mousedown", handleClick);
   }, [expanded]);
 
-  const insertAction = useCallback(
-    (action: () => void) => {
-      action();
-      setExpanded(false);
-    },
-    [],
-  );
+  const handleImageClick = useCallback(() => {
+    // Don't collapse — let the file input onChange handle it
+    fileInputRef.current?.click();
+  }, []);
 
   if (!visible) return null;
 
-  // Calculate position relative to editor
   const coords = editor.view.coordsAtPos(editor.state.selection.from);
   const editorRect = editor.view.dom.getBoundingClientRect();
   const top = coords.top - editorRect.top - 4;
@@ -76,12 +71,24 @@ export function EditorFloatingMenu({ editor, onImageUpload }: FloatingMenuProps)
     <div
       ref={menuRef}
       className="absolute"
-      style={{
-        top,
-        left: -52,
-      }}
+      style={{ top, left: -52 }}
     >
-      {/* "+" trigger button */}
+      {/* File input is always mounted so it persists across expanded states */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            onImageUpload(file);
+          }
+          setExpanded(false);
+          e.target.value = "";
+        }}
+      />
+
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -93,68 +100,30 @@ export function EditorFloatingMenu({ editor, onImageUpload }: FloatingMenuProps)
         />
       </button>
 
-      {/* Expanded options */}
       {expanded && (
         <div className="absolute left-10 top-0 flex items-center gap-1 whitespace-nowrap">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                onImageUpload(file);
-                setExpanded(false);
-              }
-              e.target.value = "";
-            }}
-          />
-
           <FloatingOption
             icon={<ImageIcon className="h-4 w-4" />}
             label="Image"
-            onClick={() => insertAction(() => fileInputRef.current?.click())}
+            onClick={handleImageClick}
           />
 
           <FloatingOption
             icon={<Minus className="h-4 w-4" />}
             label="Divider"
-            onClick={() =>
-              insertAction(() =>
-                editor.chain().focus().setHorizontalRule().run(),
-              )
-            }
+            onClick={() => {
+              editor.chain().focus().setHorizontalRule().run();
+              setExpanded(false);
+            }}
           />
 
           <FloatingOption
             icon={<Code className="h-4 w-4" />}
             label="Code"
-            onClick={() =>
-              insertAction(() =>
-                editor.chain().focus().toggleCodeBlock().run(),
-              )
-            }
-          />
-
-          <FloatingOption
-            icon={<Video className="h-4 w-4" />}
-            label="Embed"
-            onClick={() =>
-              insertAction(() => {
-                // Insert a placeholder paragraph for paste-to-embed
-                editor
-                  .chain()
-                  .focus()
-                  .insertContent({
-                    type: "paragraph",
-                    content: [{ type: "text", text: "Paste a video or embed URL..." }],
-                  })
-                  .run();
-                // Select the text so user can type over it
-                editor.commands.selectAll();
-              })
-            }
+            onClick={() => {
+              editor.chain().focus().toggleCodeBlock().run();
+              setExpanded(false);
+            }}
           />
         </div>
       )}

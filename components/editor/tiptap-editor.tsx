@@ -15,7 +15,7 @@ import { ImageToolbar } from "@/components/editor/image-toolbar";
 import { PublishModal } from "@/components/editor/publish-modal";
 import { AIPane } from "@/components/editor/ai-pane";
 import { useRouter } from "next/navigation";
-import { ImageIcon, X } from "lucide-react";
+import { ImageIcon, X, Loader2 } from "lucide-react";
 import type { JSONContent } from "@tiptap/react";
 
 type BlogOption = { id: string; name: string };
@@ -39,12 +39,14 @@ type TiptapEditorProps = {
   post?: PostData;
 };
 
-async function uploadFile(file: File): Promise<string | null> {
-  if (!file.type.startsWith("image/")) return null;
+async function uploadFile(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
   const res = await fetch("/api/upload", { method: "POST", body: formData });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(err.error ?? "Upload failed");
+  }
   const data = (await res.json()) as { url: string };
   return data.url;
 }
@@ -60,11 +62,13 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
   const [publishOpen, setPublishOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef(false);
+  const uploadingCountRef = useRef(0);
   const titleRef = useRef<HTMLDivElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
-  // Ref to always have the latest editor reference for callbacks
   const editorRef = useRef<ReturnType<typeof useEditor>>(null);
 
   const editor = useEditor({
@@ -87,19 +91,17 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
         class: "tiptap-medium",
       },
       handleDrop(view, event) {
-        const file = event.dataTransfer?.files[0];
-        if (file?.type.startsWith("image/")) {
-          event.preventDefault();
-          // Use the ref to get the current editor instance
-          const currentEditor = editorRef.current;
-          if (currentEditor) {
-            void uploadFile(file).then((url) => {
-              if (url) {
-                currentEditor.chain().focus().setImage({ src: url }).run();
-              }
-            });
+        const files = event.dataTransfer?.files;
+        if (files?.length) {
+          const file = files[0];
+          if (file.type.startsWith("image/")) {
+            event.preventDefault();
+            const currentEditor = editorRef.current;
+            if (currentEditor) {
+              void insertImageWithPreview(currentEditor, file);
+            }
+            return true;
           }
-          return true;
         }
         return false;
       },
@@ -113,11 +115,7 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
             if (file) {
               const currentEditor = editorRef.current;
               if (currentEditor) {
-                void uploadFile(file).then((url) => {
-                  if (url) {
-                    currentEditor.chain().focus().setImage({ src: url }).run();
-                  }
-                });
+                void insertImageWithPreview(currentEditor, file);
               }
             }
             return true;
@@ -131,18 +129,87 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
     },
   });
 
-  // Keep the ref in sync
   editorRef.current = editor;
+
+  // Insert image with instant blob preview, then swap to uploaded URL
+  async function insertImageWithPreview(
+    targetEditor: NonNullable<typeof editor>,
+    file: File,
+  ) {
+    setUploadError(null);
+    uploadingCountRef.current += 1;
+    setImageUploading(true);
+
+    // Create a local preview URL for instant feedback
+    const previewUrl = URL.createObjectURL(file);
+
+    // Insert image with uploading flag so CSS shows loading overlay
+    targetEditor
+      .chain()
+      .focus()
+      .insertContent({
+        type: "image",
+        attrs: {
+          src: previewUrl,
+          alt: "",
+          "data-uploading": "true",
+        },
+      })
+      .run();
+
+    try {
+      const realUrl = await uploadFile(file);
+
+      // Find the image with the preview URL and swap to real URL
+      let found = false;
+      targetEditor.state.doc.descendants((node, pos) => {
+        if (found) return false;
+        if (node.type.name === "image" && node.attrs.src === previewUrl) {
+          found = true;
+          targetEditor.view.dispatch(
+            targetEditor.state.tr.setNodeMarkup(pos, undefined, {
+              ...node.attrs,
+              src: realUrl,
+              "data-uploading": null,
+            }),
+          );
+          return false;
+        }
+      });
+    } catch (err) {
+      // Remove the failed image and show error toast
+      let found = false;
+      targetEditor.state.doc.descendants((node, pos) => {
+        if (found) return false;
+        if (node.type.name === "image" && node.attrs.src === previewUrl) {
+          found = true;
+          targetEditor.view.dispatch(
+            targetEditor.state.tr.delete(pos, pos + node.nodeSize),
+          );
+          return false;
+        }
+      });
+      setUploadError(err instanceof Error ? err.message : "Image upload failed");
+    } finally {
+      URL.revokeObjectURL(previewUrl);
+      uploadingCountRef.current -= 1;
+      if (uploadingCountRef.current <= 0) {
+        uploadingCountRef.current = 0;
+        setImageUploading(false);
+      }
+    }
+  }
 
   const wordCount = useMemo(() => {
     if (!editor) return 0;
     return editor.storage.characterCount?.words() ?? 0;
   }, [editor, editor?.state]);
 
-  // Auto-save logic
   const doSave = useCallback(async () => {
     if (!editor || isSavingRef.current) return;
     if (!title.trim()) return;
+    // Don't save while images are uploading (would save blob: URLs)
+    if (uploadingCountRef.current > 0) return;
 
     isSavingRef.current = true;
     setSaveStatus("saving");
@@ -197,7 +264,6 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
     }, 2000);
   }, [doSave]);
 
-  // Schedule save when title or cover changes
   useEffect(() => {
     if (title.trim()) {
       scheduleSave();
@@ -209,18 +275,18 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
 
   async function uploadImageToEditor(file: File) {
     if (!editor || !file.type.startsWith("image/")) return;
-    const url = await uploadFile(file);
-    if (url) {
-      editor.chain().focus().setImage({ src: url }).run();
-    }
+    await insertImageWithPreview(editor, file);
   }
 
   async function handleCoverUpload(file: File) {
     if (!file.type.startsWith("image/")) return;
     setCoverUploading(true);
+    setUploadError(null);
     try {
       const url = await uploadFile(file);
-      if (url) setCoverImageUrl(url);
+      setCoverImageUrl(url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Cover upload failed");
     } finally {
       setCoverUploading(false);
     }
@@ -319,6 +385,28 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
         publishDisabled={!title.trim()}
       />
 
+      {/* Upload status toast */}
+      {(imageUploading || coverUploading) && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-full bg-text px-4 py-2.5 text-sm text-white shadow-lg">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>{coverUploading ? "Uploading cover image..." : "Uploading image..."}</span>
+        </div>
+      )}
+
+      {/* Upload error toast */}
+      {uploadError && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-danger px-4 py-2.5 text-sm text-white shadow-lg animate-in">
+          <span>{uploadError}</span>
+          <button
+            type="button"
+            onClick={() => setUploadError(null)}
+            className="ml-1 rounded-full p-0.5 hover:bg-white/20 transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       <div className="max-w-[700px] mx-auto px-6 pt-10 pb-40">
         {/* Cover image area */}
         <div className="mb-6">
@@ -329,7 +417,7 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) handleCoverUpload(file);
+              if (file) void handleCoverUpload(file);
               e.target.value = "";
             }}
           />
@@ -366,8 +454,12 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
               disabled={coverUploading}
               className="flex items-center gap-2 text-sm text-muted/60 hover:text-muted transition-colors py-2"
             >
-              <ImageIcon className="h-5 w-5" />
-              {coverUploading ? "Uploading..." : "Add a cover image"}
+              {coverUploading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <ImageIcon className="h-5 w-5" />
+              )}
+              {coverUploading ? "Uploading cover..." : "Add a cover image"}
             </button>
           )}
         </div>
@@ -406,7 +498,6 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
         {editor && <EditorBubbleMenu editor={editor} />}
       </div>
 
-      {/* Publish modal */}
       <PublishModal
         isOpen={publishOpen}
         onClose={() => setPublishOpen(false)}
@@ -424,7 +515,6 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
         isEdit={isEdit}
       />
 
-      {/* AI drawer */}
       <AIPane
         isOpen={aiOpen}
         onClose={() => setAiOpen(false)}
