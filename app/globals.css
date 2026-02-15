@@ -197,15 +197,45 @@ body {
   border-radius: 0.25rem;
 }
 
-/* Uploading image overlay */
+/* Uploading image — desaturated with animated accent border */
 .tiptap-medium img[data-uploading="true"] {
-  opacity: 0.5;
-  animation: image-pulse 1.5s ease-in-out infinite;
+  filter: saturate(0.2) brightness(1.05);
+  opacity: 0.55;
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+  border-radius: 0.375rem;
+  animation: upload-breathe 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-@keyframes image-pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.3; }
+@keyframes upload-breathe {
+  0%, 100% {
+    opacity: 0.55;
+    outline-color: var(--color-accent);
+    outline-offset: 4px;
+  }
+  50% {
+    opacity: 0.35;
+    outline-color: transparent;
+    outline-offset: 8px;
+  }
+}
+
+/* Smooth entrance for newly loaded images */
+.tiptap-medium img:not([data-uploading]) {
+  animation: image-reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes image-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.99);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
 }
 
 /* Image alignment in editor */
@@ -477,4 +507,77 @@ body {
 
 [data-placeholder]:not(:empty)::before {
   display: none;
+}
+
+/* ── Upload status toasts ── */
+.upload-toast-enter {
+  animation: toast-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.upload-toast-exit {
+  animation: toast-down 0.35s cubic-bezier(0.7, 0, 1, 0.5) both;
+}
+
+@keyframes toast-up {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes toast-down {
+  from {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, 12px) scale(0.96);
+  }
+}
+
+/* Animated progress dots for upload toast */
+.upload-dots span {
+  animation: dot-bounce 1.4s ease-in-out infinite both;
+}
+
+.upload-dots span:nth-child(1) { animation-delay: 0s; }
+.upload-dots span:nth-child(2) { animation-delay: 0.16s; }
+.upload-dots span:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { opacity: 0.25; }
+  40% { opacity: 1; }
+}
+
+/* Cover image drop zone */
+.cover-drop-zone {
+  transition: border-color 0.2s, background-color 0.2s, transform 0.2s;
+}
+
+.cover-drop-zone[data-drag-over="true"] {
+  border-color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  transform: scale(1.005);
+}
+
+/* Cover image loading skeleton */
+.cover-skeleton {
+  background: linear-gradient(
+    110deg,
+    var(--color-line) 30%,
+    color-mix(in srgb, var(--color-line) 60%, white) 50%,
+    var(--color-line) 70%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
 }

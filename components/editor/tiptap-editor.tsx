@@ -15,7 +15,7 @@ import { ImageToolbar } from "@/components/editor/image-toolbar";
 import { PublishModal } from "@/components/editor/publish-modal";
 import { AIPane } from "@/components/editor/ai-pane";
 import { useRouter } from "next/navigation";
-import { ImageIcon, X, Loader2 } from "lucide-react";
+import { ImageIcon, X, Loader2, Upload, CheckCircle2, AlertCircle } from "lucide-react";
 import type { JSONContent } from "@tiptap/react";
 
 type BlogOption = { id: string; name: string };
@@ -64,9 +64,12 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
   const [coverUploading, setCoverUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [coverDragOver, setCoverDragOver] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef(false);
   const uploadingCountRef = useRef(0);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<ReturnType<typeof useEditor>>(null);
@@ -189,13 +192,22 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
           return false;
         }
       });
-      setUploadError(err instanceof Error ? err.message : "Image upload failed");
+      const msg = err instanceof Error ? err.message : "Image upload failed";
+      setUploadError(msg);
+      // Auto-dismiss error after 5 seconds
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = setTimeout(() => setUploadError(null), 5000);
     } finally {
       URL.revokeObjectURL(previewUrl);
       uploadingCountRef.current -= 1;
       if (uploadingCountRef.current <= 0) {
         uploadingCountRef.current = 0;
         setImageUploading(false);
+        // Flash success indicator
+        if (!uploadError) {
+          setUploadSuccess(true);
+          setTimeout(() => setUploadSuccess(false), 2000);
+        }
       }
     }
   }
@@ -385,22 +397,39 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
         publishDisabled={!title.trim()}
       />
 
-      {/* Upload status toast */}
+      {/* Upload status toast — bottom center, slides up */}
       {(imageUploading || coverUploading) && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-full bg-text px-4 py-2.5 text-sm text-white shadow-lg">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>{coverUploading ? "Uploading cover image..." : "Uploading image..."}</span>
+        <div className="upload-toast-enter fixed bottom-8 left-1/2 z-50 flex items-center gap-3 rounded-full border border-line/60 bg-white px-5 py-3 shadow-xl">
+          <div className="relative flex h-5 w-5 items-center justify-center">
+            <div className="absolute inset-0 rounded-full border-2 border-accent/20" />
+            <Loader2 className="h-5 w-5 animate-spin text-accent" />
+          </div>
+          <span className="text-sm font-medium text-text">
+            {coverUploading ? "Uploading cover" : "Uploading image"}
+          </span>
+          <span className="upload-dots flex gap-0.5 text-accent font-bold text-sm">
+            <span>.</span><span>.</span><span>.</span>
+          </span>
         </div>
       )}
 
-      {/* Upload error toast */}
+      {/* Upload success toast */}
+      {uploadSuccess && !imageUploading && (
+        <div className="upload-toast-enter fixed bottom-8 left-1/2 z-50 flex items-center gap-2.5 rounded-full border border-accent/20 bg-white px-5 py-3 shadow-xl">
+          <CheckCircle2 className="h-4.5 w-4.5 text-accent" />
+          <span className="text-sm font-medium text-accent">Image uploaded</span>
+        </div>
+      )}
+
+      {/* Upload error toast — auto-dismissing */}
       {uploadError && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-danger px-4 py-2.5 text-sm text-white shadow-lg animate-in">
-          <span>{uploadError}</span>
+        <div className="upload-toast-enter fixed bottom-8 left-1/2 z-50 flex items-center gap-2.5 rounded-full border border-danger/20 bg-white px-5 py-3 shadow-xl">
+          <AlertCircle className="h-4.5 w-4.5 text-danger shrink-0" />
+          <span className="text-sm font-medium text-danger">{uploadError}</span>
           <button
             type="button"
             onClick={() => setUploadError(null)}
-            className="ml-1 rounded-full p-0.5 hover:bg-white/20 transition-colors"
+            className="ml-0.5 rounded-full p-1 text-muted hover:text-text hover:bg-gray-100 transition-colors"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -409,7 +438,7 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
 
       <div className="max-w-[700px] mx-auto px-6 pt-10 pb-40">
         {/* Cover image area */}
-        <div className="mb-6">
+        <div className="mb-8">
           <input
             ref={coverInputRef}
             type="file"
@@ -423,44 +452,71 @@ export function TiptapEditor({ blogs, post }: TiptapEditorProps) {
           />
 
           {coverImageUrl ? (
-            <div className="group relative -mx-6">
+            <div className="group relative -mx-6 rounded-md overflow-hidden">
               <img
                 src={coverImageUrl}
                 alt="Cover"
-                className="w-full max-h-[420px] object-cover"
+                className="w-full max-h-[420px] object-cover transition-all duration-500"
+                style={{ animation: "image-reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both" }}
               />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center gap-3 pb-5">
                 <button
                   type="button"
                   onClick={() => coverInputRef.current?.click()}
-                  className="rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-text shadow hover:bg-white transition-colors"
+                  className="rounded-full bg-white/95 backdrop-blur-sm px-4 py-2 text-sm font-medium text-text shadow-lg hover:bg-white transition-all hover:scale-[1.02]"
                 >
                   Change image
                 </button>
                 <button
                   type="button"
                   onClick={() => setCoverImageUrl("")}
-                  className="rounded-full bg-white/90 p-2 text-text shadow hover:bg-white transition-colors"
+                  className="rounded-full bg-white/95 backdrop-blur-sm p-2.5 text-muted shadow-lg hover:bg-white hover:text-danger transition-all hover:scale-[1.02]"
                   title="Remove cover"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
+          ) : coverUploading ? (
+            <div className="-mx-6 rounded-md overflow-hidden">
+              <div className="cover-skeleton h-52 flex items-center justify-center">
+                <div className="flex items-center gap-3 rounded-full bg-white/80 backdrop-blur-sm px-5 py-2.5 shadow-sm">
+                  <Loader2 className="h-4 w-4 animate-spin text-accent" />
+                  <span className="text-sm font-medium text-text">Uploading cover...</span>
+                </div>
+              </div>
+            </div>
           ) : (
-            <button
-              type="button"
+            <div
+              data-drag-over={coverDragOver ? "true" : undefined}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setCoverDragOver(true);
+              }}
+              onDragLeave={() => setCoverDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setCoverDragOver(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file?.type.startsWith("image/")) void handleCoverUpload(file);
+              }}
+              className="cover-drop-zone -mx-6 flex items-center justify-center rounded-md border-2 border-dashed border-line py-10 cursor-pointer group"
               onClick={() => coverInputRef.current?.click()}
-              disabled={coverUploading}
-              className="flex items-center gap-2 text-sm text-muted/60 hover:text-muted transition-colors py-2"
             >
-              {coverUploading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <ImageIcon className="h-5 w-5" />
-              )}
-              {coverUploading ? "Uploading cover..." : "Add a cover image"}
-            </button>
+              <div className="flex items-center gap-3 text-muted/50 group-hover:text-muted transition-colors">
+                {coverDragOver ? (
+                  <>
+                    <Upload className="h-5 w-5 text-accent" />
+                    <span className="text-sm font-medium text-accent">Drop image here</span>
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="h-5 w-5" />
+                    <span className="text-sm">Add a cover image</span>
+                  </>
+                )}
+              </div>
+            </div>
           )}
         </div>
 
