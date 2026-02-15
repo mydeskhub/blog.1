@@ -81,6 +81,8 @@ export async function PATCH(
       ...(body.coverImageUrl !== undefined
         ? { coverImageUrl: body.coverImageUrl }
         : {}),
+      ...(body.seoTitle !== undefined ? { seoTitle: body.seoTitle } : {}),
+      ...(body.seoDescription !== undefined ? { seoDescription: body.seoDescription } : {}),
       ...(body.status
         ? {
             status: body.status,

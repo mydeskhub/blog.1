@@ -26,6 +26,8 @@ export const updatePostSchema = z.object({
     .enum(["DRAFT", "IN_REVIEW", "CHANGES_REQUESTED", "APPROVED", "PUBLISHED", "ARCHIVED"])
     .optional(),
   summary: z.string().max(200).optional(),
+  seoTitle: z.string().max(70).nullable().optional(),
+  seoDescription: z.string().max(160).nullable().optional(),
 });
 
 export const commentSchema = z.object({

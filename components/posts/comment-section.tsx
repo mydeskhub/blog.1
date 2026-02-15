@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
 
 type Comment = {
@@ -53,34 +52,45 @@ export function CommentSection({ postId }: { postId: string }) {
   }
 
   return (
-    <div>
-      <h2 className="text-lg font-bold mb-4">
-        Comments {comments.length > 0 && `(${comments.length})`}
+    <div id="comments">
+      <h2 className="text-xl font-bold mb-6">
+        Responses {comments.length > 0 && `(${comments.length})`}
       </h2>
 
       {session?.user && (
-        <form onSubmit={submitComment} className="mb-6">
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Write a comment..."
-            className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none min-h-[80px] resize-y focus:border-accent focus:ring-1 focus:ring-accent"
-          />
-          <div className="mt-2 flex justify-end">
-            <Button
-              variant="primary"
-              size="sm"
-              type="submit"
-              disabled={submitting || !body.trim()}
-            >
-              {submitting ? "Posting..." : "Post comment"}
-            </Button>
+        <form onSubmit={submitComment} className="mb-8">
+          <div className="flex items-start gap-3">
+            <Avatar
+              src={session.user.image}
+              name={session.user.name}
+              size={32}
+              className="mt-1 shrink-0"
+            />
+            <div className="flex-1">
+              <textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="What are your thoughts?"
+                className="w-full border-0 border-b border-transparent bg-transparent px-0 py-2 text-sm outline-none min-h-[40px] resize-none focus:border-line transition-colors placeholder:text-muted"
+              />
+              {body.trim() && (
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="rounded-full bg-accent px-4 py-1.5 text-xs font-medium text-accent-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {submitting ? "Posting..." : "Respond"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </form>
       )}
 
       {loading ? (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {[1, 2, 3].map((i) => (
             <div key={i} className="animate-pulse">
               <div className="h-4 w-24 rounded bg-line mb-2" />
@@ -89,25 +99,31 @@ export function CommentSection({ postId }: { postId: string }) {
           ))}
         </div>
       ) : comments.length === 0 ? (
-        <p className="text-sm text-muted">No comments yet. Be the first!</p>
+        <p className="text-sm text-muted py-4">
+          There are currently no responses for this story. Be the first to respond.
+        </p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {comments.map((comment) => (
-            <div key={comment.id} className="border-b border-line pb-4 last:border-0">
-              <div className="flex items-center gap-2 mb-1">
+            <div key={comment.id} className="group">
+              <div className="flex items-center gap-2.5 mb-2">
                 <Avatar
                   src={comment.author.image}
                   name={comment.author.name}
-                  size={24}
+                  size={32}
                 />
-                <span className="text-sm font-medium">
-                  {comment.author.name ?? "Reader"}
-                </span>
-                <span className="text-xs text-muted">
-                  {formatDate(comment.createdAt)}
-                </span>
+                <div>
+                  <span className="text-sm font-medium text-text">
+                    {comment.author.name ?? "Reader"}
+                  </span>
+                  <span className="text-xs text-muted ml-2">
+                    {formatDate(comment.createdAt)}
+                  </span>
+                </div>
               </div>
-              <p className="text-sm text-text pl-8">{comment.body}</p>
+              <p className="text-sm text-text leading-relaxed pl-[42px]">
+                {comment.body}
+              </p>
             </div>
           ))}
         </div>

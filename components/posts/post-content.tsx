@@ -9,7 +9,7 @@ export function PostContent({ htmlContent }: PostContentProps) {
 
   return (
     <div
-      className="prose"
+      className="prose-medium"
       dangerouslySetInnerHTML={{ __html: htmlContent }}
     />
   );

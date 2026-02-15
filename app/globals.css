@@ -143,3 +143,235 @@ body {
   padding: 0;
   color: inherit;
 }
+
+/* Medium-style editor typography */
+.tiptap-medium {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  line-height: 1.8;
+  min-height: calc(100vh - 200px);
+  outline: none;
+  color: var(--color-text);
+}
+
+.tiptap-medium p {
+  margin: 0.8rem 0;
+}
+
+.tiptap-medium h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 2rem 0 0.5rem;
+  font-family: var(--font-serif);
+}
+
+.tiptap-medium h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1.8rem 0 0.4rem;
+  font-family: var(--font-sans);
+}
+
+.tiptap-medium h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.5rem 0 0.3rem;
+  font-family: var(--font-sans);
+}
+
+.tiptap-medium img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.25rem;
+  margin: 1.5rem 0;
+}
+
+.tiptap-medium a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.tiptap-medium blockquote {
+  border-left: 3px solid var(--color-text);
+  margin: 1.5rem 0;
+  padding-left: 1.25rem;
+  font-style: italic;
+  color: var(--color-text);
+  font-size: 1.3rem;
+  line-height: 1.7;
+}
+
+.tiptap-medium code {
+  background: #f4f4f5;
+  border-radius: 0.25rem;
+  padding: 0.15rem 0.3rem;
+  font-size: 0.9em;
+}
+
+.tiptap-medium pre {
+  background: #1e1e1e;
+  color: #d4d4d8;
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.tiptap-medium pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.tiptap-medium hr {
+  border: none;
+  text-align: center;
+  margin: 2rem 0;
+}
+
+.tiptap-medium hr::before {
+  content: "...";
+  font-size: 1.5rem;
+  letter-spacing: 0.5em;
+  color: var(--color-text);
+}
+
+.tiptap-medium .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-muted);
+  pointer-events: none;
+  height: 0;
+  font-style: italic;
+}
+
+.tiptap-medium ul,
+.tiptap-medium ol {
+  padding-left: 1.5rem;
+  margin: 0.8rem 0;
+}
+
+.tiptap-medium li {
+  margin: 0.3rem 0;
+}
+
+/* Medium-style prose for reading pages */
+.prose-medium {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  line-height: 1.8;
+  color: var(--color-text);
+}
+
+.prose-medium p {
+  margin: 0.8rem 0;
+}
+
+.prose-medium h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 2rem 0 0.5rem;
+  font-family: var(--font-serif);
+}
+
+.prose-medium h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1.8rem 0 0.4rem;
+  font-family: var(--font-sans);
+}
+
+.prose-medium h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.5rem 0 0.3rem;
+  font-family: var(--font-sans);
+}
+
+.prose-medium img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.25rem;
+  margin: 1.5rem 0;
+}
+
+.prose-medium a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.prose-medium blockquote {
+  border-left: 3px solid var(--color-text);
+  margin: 1.5rem 0;
+  padding-left: 1.25rem;
+  font-style: italic;
+  font-size: 1.3rem;
+  line-height: 1.7;
+}
+
+.prose-medium code {
+  background: #f4f4f5;
+  border-radius: 0.25rem;
+  padding: 0.15rem 0.3rem;
+  font-size: 0.9em;
+}
+
+.prose-medium pre {
+  background: #1e1e1e;
+  color: #d4d4d8;
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.prose-medium pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.prose-medium hr {
+  border: none;
+  text-align: center;
+  margin: 2rem 0;
+}
+
+.prose-medium hr::before {
+  content: "...";
+  font-size: 1.5rem;
+  letter-spacing: 0.5em;
+  color: var(--color-text);
+}
+
+.prose-medium ul,
+.prose-medium ol {
+  padding-left: 1.5rem;
+  margin: 0.8rem 0;
+}
+
+.prose-medium li {
+  margin: 0.3rem 0;
+}
+
+/* Inline title placeholder */
+[data-placeholder]::before {
+  content: attr(data-placeholder);
+  color: var(--color-muted);
+  pointer-events: none;
+  position: absolute;
+}
+
+[data-placeholder]:empty::before {
+  display: block;
+}
+
+[data-placeholder]:not(:empty)::before {
+  display: none;
+}

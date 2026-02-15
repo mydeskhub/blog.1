@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { Heart } from "lucide-react";
+import { HandMetal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ClapButtonProps = {
@@ -15,10 +15,14 @@ export function ClapButton({ postId, initialCount }: ClapButtonProps) {
   const [count, setCount] = useState(initialCount);
   const [clapping, setClapping] = useState(false);
   const [clapped, setClapped] = useState(false);
+  const [animating, setAnimating] = useState(false);
+  const sessionClaps = useRef(0);
 
   async function handleClap() {
-    if (!session?.user) return;
+    if (!session?.user || sessionClaps.current >= 50) return;
     setClapping(true);
+    setAnimating(true);
+    setTimeout(() => setAnimating(false), 200);
 
     try {
       const res = await fetch("/api/claps", {
@@ -31,6 +35,7 @@ export function ClapButton({ postId, initialCount }: ClapButtonProps) {
         const data = (await res.json()) as { totalClaps: number };
         setCount(data.totalClaps);
         setClapped(true);
+        sessionClaps.current += 1;
       }
     } catch {
       // Silent fail
@@ -42,20 +47,30 @@ export function ClapButton({ postId, initialCount }: ClapButtonProps) {
   return (
     <button
       onClick={handleClap}
-      disabled={clapping || !session?.user}
+      disabled={clapping || !session?.user || sessionClaps.current >= 50}
       className={cn(
-        "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors",
+        "flex items-center gap-1.5 text-sm transition-colors px-2 py-1 rounded-full",
         clapped
-          ? "border-accent/30 bg-accent/5 text-accent"
-          : "border-line text-muted hover:border-accent hover:text-accent",
+          ? "text-accent"
+          : "text-muted hover:text-accent",
         !session?.user && "cursor-default opacity-60",
       )}
-      title={session?.user ? "Clap for this post" : "Sign in to clap"}
+      title={
+        !session?.user
+          ? "Sign in to clap"
+          : sessionClaps.current >= 50
+            ? "Max claps reached"
+            : "Clap for this story"
+      }
     >
-      <Heart
-        className={cn("h-4 w-4", clapped && "fill-accent")}
+      <HandMetal
+        className={cn(
+          "h-5 w-5 transition-transform",
+          animating && "scale-125",
+          clapped && "fill-accent/20",
+        )}
       />
-      {count}
+      {count > 0 && count}
     </button>
   );
 }

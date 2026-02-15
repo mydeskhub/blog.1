@@ -1,12 +1,10 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { PostContent } from "@/components/posts/post-content";
 import { CommentSection } from "@/components/posts/comment-section";
-import { ClapButton } from "@/components/posts/clap-button";
+import { FloatingBar } from "@/components/posts/floating-bar";
 import { formatDate } from "@/lib/utils";
 
 export const revalidate = 120;
@@ -55,6 +53,7 @@ export default async function PublicPostPage({ params }: Props) {
       author: { select: { name: true, image: true, bio: true } },
       blog: { select: { title: true } },
       tags: { include: { tag: true } },
+      _count: { select: { comments: true } },
     },
   });
 
@@ -65,63 +64,105 @@ export default async function PublicPostPage({ params }: Props) {
     _sum: { count: true },
   });
 
+  const readTime = post.readTime ?? Math.max(1, Math.round((post.htmlContent?.split(/\s+/).length ?? 0) / 200));
+
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
+    <main className="min-h-screen bg-white pb-24">
       <article>
-        <Card>
-          <h1 className="text-3xl font-bold leading-tight text-text">
+        {/* Title section */}
+        <div className="mx-auto max-w-[700px] px-6 pt-12">
+          <h1 className="font-serif text-[42px] font-bold leading-[1.15] text-text">
             {post.title}
           </h1>
 
-          <div className="mt-4 flex items-center gap-3">
+          {/* Author bar */}
+          <div className="mt-8 flex items-center gap-3">
             <Avatar
               src={post.author.image}
               name={post.author.name}
-              size={40}
+              size={44}
             />
             <div>
               <p className="font-medium text-text">
                 {post.author.name ?? "Unknown"}
               </p>
-              <p className="text-xs text-muted">
-                {post.blog.title} &middot; {formatDate(post.publishedAt)}
-                {post.readTime && ` · ${post.readTime} min read`}
+              <p className="text-sm text-muted">
+                {readTime} min read &middot; {formatDate(post.publishedAt)}
               </p>
             </div>
           </div>
 
-          {post.coverImageUrl && (
+          {/* Action bar */}
+          <div className="mt-6 flex items-center gap-4 border-y border-line py-3 text-sm text-muted">
+            <span>{totalClaps._sum.count ?? 0} claps</span>
+            <span>&middot;</span>
+            <span>{post._count.comments} responses</span>
+          </div>
+        </div>
+
+        {/* Cover image (wider than text) */}
+        {post.coverImageUrl && (
+          <div className="mx-auto max-w-[900px] px-6 mt-8">
             <img
               src={post.coverImageUrl}
               alt={post.title}
-              className="mt-6 w-full rounded-xl object-cover"
+              className="w-full rounded-sm object-cover"
             />
-          )}
-
-          <div className="mt-6">
-            <PostContent htmlContent={post.htmlContent} />
           </div>
+        )}
 
-          {post.tags.length > 0 && (
-            <div className="mt-6 flex flex-wrap gap-2">
-              {post.tags.map((t) => (
-                <Badge key={t.tagId}>#{t.tag.name}</Badge>
-              ))}
+        {/* Content */}
+        <div className="mx-auto max-w-[700px] px-6 mt-8">
+          <PostContent htmlContent={post.htmlContent} />
+        </div>
+
+        {/* Tags */}
+        {post.tags.length > 0 && (
+          <div className="mx-auto max-w-[700px] px-6 mt-10 flex flex-wrap gap-2">
+            {post.tags.map((t) => (
+              <span
+                key={t.tagId}
+                className="rounded-full bg-gray-100 px-4 py-2 text-sm text-text"
+              >
+                {t.tag.name}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Author bio */}
+        <div className="mx-auto max-w-[700px] px-6 mt-12 pt-8 border-t border-line">
+          <div className="flex items-start gap-4">
+            <Avatar
+              src={post.author.image}
+              name={post.author.name}
+              size={56}
+            />
+            <div>
+              <p className="font-bold text-text text-lg">
+                {post.author.name ?? "Unknown"}
+              </p>
+              {post.author.bio && (
+                <p className="mt-1 text-sm text-muted leading-relaxed">
+                  {post.author.bio}
+                </p>
+              )}
             </div>
-          )}
-
-          <div className="mt-6 pt-4 border-t border-line">
-            <ClapButton
-              postId={post.id}
-              initialCount={totalClaps._sum.count ?? 0}
-            />
           </div>
-        </Card>
+        </div>
+
+        {/* Comments */}
+        <div className="mx-auto max-w-[700px] px-6 mt-12 pt-8 border-t border-line">
+          <CommentSection postId={post.id} />
+        </div>
       </article>
 
-      <Card className="mt-6">
-        <CommentSection postId={post.id} />
-      </Card>
+      {/* Floating bottom bar */}
+      <FloatingBar
+        postId={post.id}
+        initialClaps={totalClaps._sum.count ?? 0}
+        commentCount={post._count.comments}
+      />
     </main>
   );
 }

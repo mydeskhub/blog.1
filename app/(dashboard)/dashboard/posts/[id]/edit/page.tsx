@@ -51,6 +51,8 @@ export default async function EditPostPage({
         excerpt: post.excerpt ?? undefined,
         coverImageUrl: post.coverImageUrl ?? undefined,
         tags: post.tags.map((pt) => pt.tag.name),
+        seoTitle: post.seoTitle ?? undefined,
+        seoDescription: post.seoDescription ?? undefined,
       }}
     />
   );
