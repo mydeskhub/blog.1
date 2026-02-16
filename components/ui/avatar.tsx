@@ -26,7 +26,7 @@ export function Avatar({ src, name, size = 32, className }: AvatarProps) {
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-full bg-accent text-accent-foreground text-xs font-bold",
+        "flex items-center justify-center rounded-full bg-text text-surface text-xs font-bold",
         className,
       )}
       style={{ width: size, height: size }}

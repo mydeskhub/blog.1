@@ -10,6 +10,7 @@ type PostCardProps = {
   authorName: string | null;
   authorImage?: string | null;
   blogTitle: string;
+  coverImageUrl?: string | null;
 };
 
 export function PostCard({
@@ -20,24 +21,38 @@ export function PostCard({
   authorName,
   authorImage,
   blogTitle,
+  coverImageUrl,
 }: PostCardProps) {
   return (
-    <article className="group border-b border-line py-5 last:border-0">
+    <article className="group">
       <Link href={`/p/${slug}`} className="block">
-        <h3 className="text-lg font-bold text-text group-hover:text-accent transition-colors">
-          {title}
-        </h3>
-        {excerpt && (
-          <p className="mt-1 text-sm text-muted line-clamp-2">{excerpt}</p>
+        {coverImageUrl && (
+          <div className="aspect-[16/10] overflow-hidden rounded-lg mb-4">
+            <img
+              src={coverImageUrl}
+              alt={title}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            />
+          </div>
         )}
+        <div className="space-y-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-accent">
+            {blogTitle}
+          </span>
+          <h3 className="font-display text-xl font-bold leading-snug text-text transition-colors group-hover:text-accent">
+            {title}
+          </h3>
+          {excerpt && (
+            <p className="text-sm leading-relaxed text-muted line-clamp-2">{excerpt}</p>
+          )}
+        </div>
       </Link>
       <div className="mt-3 flex items-center gap-2 text-xs text-muted">
         <Avatar src={authorImage} name={authorName} size={20} />
-        <span>{authorName ?? "Unknown"}</span>
-        <span>in {blogTitle}</span>
+        <span className="font-medium text-text/70">{authorName ?? "Unknown"}</span>
         {publishedAt && (
           <>
-            <span>&middot;</span>
+            <span className="text-line">&middot;</span>
             <span>{formatDate(publishedAt)}</span>
           </>
         )}

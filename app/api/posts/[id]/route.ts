@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { updatePostSchema } from "@/lib/validation";
 import { toSlug } from "@/lib/utils";
+import { submitToIndexNow } from "@/lib/indexnow";
+import { canonicalUrl } from "@/lib/seo";
 
 export async function GET(
   _: Request,
@@ -111,6 +113,11 @@ export async function PATCH(
       tags: { include: { tag: true } },
     },
   });
+
+  // Fire-and-forget IndexNow submission on publish
+  if (body.status === "PUBLISHED" && existing.status !== "PUBLISHED") {
+    submitToIndexNow([canonicalUrl(`/p/${post.slug}`)]).catch(() => {});
+  }
 
   return NextResponse.json(post);
 }

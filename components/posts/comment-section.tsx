@@ -53,7 +53,7 @@ export function CommentSection({ postId }: { postId: string }) {
 
   return (
     <div id="comments">
-      <h2 className="text-xl font-bold mb-6">
+      <h2 className="font-display text-xl font-bold mb-6">
         Responses {comments.length > 0 && `(${comments.length})`}
       </h2>
 
@@ -70,7 +70,7 @@ export function CommentSection({ postId }: { postId: string }) {
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="What are your thoughts?"
+                placeholder="Share your thoughts..."
                 className="w-full border-0 border-b border-transparent bg-transparent px-0 py-2 text-sm outline-none min-h-[40px] resize-none focus:border-line transition-colors placeholder:text-muted"
               />
               {body.trim() && (
@@ -78,7 +78,7 @@ export function CommentSection({ postId }: { postId: string }) {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="rounded-full bg-accent px-4 py-1.5 text-xs font-medium text-accent-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="rounded-lg bg-accent px-4 py-1.5 text-xs font-medium text-accent-foreground shadow-sm hover:brightness-110 transition-all disabled:opacity-50"
                   >
                     {submitting ? "Posting..." : "Respond"}
                   </button>
@@ -100,7 +100,7 @@ export function CommentSection({ postId }: { postId: string }) {
         </div>
       ) : comments.length === 0 ? (
         <p className="text-sm text-muted py-4">
-          There are currently no responses for this story. Be the first to respond.
+          No responses yet. Be the first to share your thoughts.
         </p>
       ) : (
         <div className="space-y-6">

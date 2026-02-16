@@ -19,10 +19,10 @@ export function FloatingBar({ postId, initialClaps, commentCount }: FloatingBarP
   }
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 rounded-full border border-line bg-white px-5 py-2.5 shadow-lg">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 rounded-xl border border-line bg-surface px-4 py-2 shadow-lg ring-1 ring-black/[0.04]">
       <ClapButton postId={postId} initialCount={initialClaps} />
 
-      <div className="mx-2 h-5 w-px bg-line" />
+      <div className="mx-1.5 h-4 w-px bg-line" />
 
       <button
         type="button"
@@ -31,11 +31,11 @@ export function FloatingBar({ postId, initialClaps, commentCount }: FloatingBarP
         }}
         className="flex items-center gap-1.5 text-sm text-muted hover:text-text transition-colors px-2 py-1"
       >
-        <MessageCircle className="h-4 w-4" />
+        <MessageCircle className="h-[18px] w-[18px]" />
         {commentCount > 0 && commentCount}
       </button>
 
-      <div className="mx-2 h-5 w-px bg-line" />
+      <div className="mx-1.5 h-4 w-px bg-line" />
 
       <button
         type="button"
@@ -43,14 +43,14 @@ export function FloatingBar({ postId, initialClaps, commentCount }: FloatingBarP
         className="p-1.5 text-muted hover:text-text transition-colors"
         title="Share"
       >
-        <Share className="h-4 w-4" />
+        <Share className="h-[18px] w-[18px]" />
       </button>
       <button
         type="button"
         className="p-1.5 text-muted hover:text-text transition-colors"
         title="Bookmark"
       >
-        <Bookmark className="h-4 w-4" />
+        <Bookmark className="h-[18px] w-[18px]" />
       </button>
     </div>
   );

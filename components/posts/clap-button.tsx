@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { HandMetal } from "lucide-react";
+import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ClapButtonProps = {
@@ -49,7 +49,7 @@ export function ClapButton({ postId, initialCount }: ClapButtonProps) {
       onClick={handleClap}
       disabled={clapping || !session?.user || sessionClaps.current >= 50}
       className={cn(
-        "flex items-center gap-1.5 text-sm transition-colors px-2 py-1 rounded-full",
+        "flex items-center gap-1.5 text-sm transition-colors px-2 py-1 rounded-lg",
         clapped
           ? "text-accent"
           : "text-muted hover:text-accent",
@@ -57,17 +57,17 @@ export function ClapButton({ postId, initialCount }: ClapButtonProps) {
       )}
       title={
         !session?.user
-          ? "Sign in to clap"
+          ? "Sign in to like"
           : sessionClaps.current >= 50
-            ? "Max claps reached"
-            : "Clap for this story"
+            ? "Max likes reached"
+            : "Like this post"
       }
     >
-      <HandMetal
+      <Heart
         className={cn(
-          "h-5 w-5 transition-transform",
+          "h-[18px] w-[18px] transition-transform",
           animating && "scale-125",
-          clapped && "fill-accent/20",
+          clapped && "fill-accent",
         )}
       />
       {count > 0 && count}

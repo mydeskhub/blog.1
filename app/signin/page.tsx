@@ -1,22 +1,24 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { PenLine } from "lucide-react";
 
 export default function SignInPage() {
   return (
-    <main className="mx-auto flex max-w-md flex-col items-center px-4 pt-16">
-      <div className="w-full rounded-2xl border border-line bg-surface p-8 shadow-sm">
-        <div className="mb-6 flex flex-col items-center gap-2">
-          <PenLine className="h-8 w-8 text-accent" />
-          <h1 className="text-2xl font-bold text-text">Welcome back</h1>
+    <main className="mx-auto flex max-w-sm flex-col items-center px-6 pt-20 md:pt-28">
+      <div className="w-full">
+        {/* Brand mark */}
+        <div className="mb-8 flex flex-col items-center gap-3">
+          <span className="mx-auto h-8 w-2 rounded-sm bg-accent" />
+          <h1 className="font-display text-2xl font-bold tracking-tight text-text">
+            Welcome back
+          </h1>
           <p className="text-sm text-muted">Sign in to continue to BlogSaaS</p>
         </div>
 
         <div className="flex flex-col gap-3">
           <button
             onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-medium text-accent-foreground hover:opacity-90"
+            className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-text px-4 py-3 text-sm font-medium text-surface transition-all hover:bg-text/90 active:scale-[0.99]"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24">
               <path
@@ -41,7 +43,7 @@ export default function SignInPage() {
 
           <button
             onClick={() => signIn("twitter", { callbackUrl: "/dashboard" })}
-            className="flex w-full items-center justify-center gap-2 rounded-full border border-line bg-surface px-4 py-3 text-sm font-medium text-text hover:bg-gray-50"
+            className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-line bg-surface px-4 py-3 text-sm font-medium text-text transition-all hover:bg-gray-50 active:scale-[0.99]"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24">
               <path
@@ -49,7 +51,7 @@ export default function SignInPage() {
                 d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
               />
             </svg>
-            Continue with X (Twitter)
+            Continue with X
           </button>
         </div>
       </div>

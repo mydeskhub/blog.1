@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const indexNowKey = process.env.INDEXNOW_API_KEY;
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -8,6 +10,11 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "pbs.twimg.com" },
     ],
+  },
+  async rewrites() {
+    return indexNowKey
+      ? [{ source: `/${indexNowKey}.txt`, destination: "/api/indexnow-key" }]
+      : [];
   },
   async headers() {
     return [
